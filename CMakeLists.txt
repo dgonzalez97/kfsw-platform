@@ -1,5 +1,6 @@
 add_library(kfsw_platform STATIC
     src/reset.c
+    src/time.c
 )
 
 add_library(kfsw::platform ALIAS kfsw_platform)
