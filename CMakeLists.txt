@@ -12,5 +12,6 @@ target_include_directories(kfsw_platform
 
 target_link_libraries(kfsw_platform
     PUBLIC
+        zephyr_generated_headers
         zephyr_interface
 )
