@@ -1,0 +1,13 @@
+menu "K-FSW platform"
+
+config KFSW_STORAGE
+	bool "K-FSW filesystem storage lifecycle"
+	depends on FLASH_MAP
+	depends on FILE_SYSTEM_LITTLEFS
+	depends on FILE_SYSTEM_MKFS
+	help
+	  Enable the K-FSW LittleFS storage lifecycle over the fixed flash
+	  partition selected by the kfsw,storage-partition devicetree chosen
+	  property. File operations continue to use Zephyr's filesystem API.
+
+endmenu

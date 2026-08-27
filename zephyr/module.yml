@@ -2,3 +2,4 @@ name: kfsw-platform
 
 build:
   cmake: .
+  kconfig: Kconfig
