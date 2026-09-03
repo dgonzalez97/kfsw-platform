@@ -10,4 +10,40 @@ config KFSW_STORAGE
 	  partition selected by the kfsw,storage-partition devicetree chosen
 	  property. File operations continue to use Zephyr's filesystem API.
 
+config KFSW_WATCHDOG
+	bool "K-FSW hardware watchdog"
+	depends on WATCHDOG
+	help
+	  Enable the platform watchdog mechanism: arm the device selected by
+	  the kfsw,watchdog devicetree chosen property, keep it fed, and allow
+	  the feed to be stopped so that the part resets.
+
+	  This is the mechanism only. It carries no health policy and decides
+	  nothing about whether the system is well.
+
+	  On a target with no kfsw,watchdog chosen node the API is still
+	  present and every operation reports -ENODEV, so a composition without
+	  watchdog hardware builds and runs unchanged.
+
+config KFSW_WATCHDOG_TIMEOUT_MS
+	int "Watchdog timeout in milliseconds"
+	depends on KFSW_WATCHDOG
+	default 8000
+	range 100 32000
+	help
+	  Time the hardware allows between feeds before resetting the part.
+	  The keep-alive feeds at a third of this, so two consecutive feeds can
+	  be missed before a reset. The upper bound is what the STM32
+	  independent watchdog can express from its low-speed oscillator.
+
+config KFSW_WATCHDOG_AUTO_START
+	bool "Arm the watchdog during application start-up"
+	depends on KFSW_WATCHDOG
+	default y
+	help
+	  Arm the hardware once the application has finished bringing services
+	  up. Turn this off to arm it explicitly, which is what a composition
+	  wants when a later boot stage decides whether the image is healthy
+	  enough to guard.
+
 endmenu

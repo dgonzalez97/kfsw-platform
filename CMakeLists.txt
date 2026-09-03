@@ -7,6 +7,10 @@ target_sources_ifdef(CONFIG_KFSW_STORAGE kfsw_platform PRIVATE
     src/storage.c
 )
 
+target_sources_ifdef(CONFIG_KFSW_WATCHDOG kfsw_platform PRIVATE
+    src/watchdog.c
+)
+
 add_library(kfsw::platform ALIAS kfsw_platform)
 
 target_include_directories(kfsw_platform
