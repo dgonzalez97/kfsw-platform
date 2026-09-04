@@ -170,6 +170,7 @@ int kfsw_platform_watchdog_start(void)
 
 	key = k_spin_lock(&watchdog_lock);
 	watchdog_state.state = KFSW_PLATFORM_WATCHDOG_RUNNING;
+	watchdog_state.keepalive_owned = true;
 	(void)watchdog_feed_locked();
 	k_spin_unlock(&watchdog_lock, key);
 
@@ -199,6 +200,29 @@ int kfsw_platform_watchdog_feed(void)
 	k_spin_unlock(&watchdog_lock, key);
 
 	return result;
+#else
+	return -ENODEV;
+#endif
+}
+
+int kfsw_platform_watchdog_release(void)
+{
+#if KFSW_WATCHDOG_PRESENT
+	k_spinlock_key_t key;
+
+	key = k_spin_lock(&watchdog_lock);
+	if (watchdog_state.state != KFSW_PLATFORM_WATCHDOG_RUNNING) {
+		k_spin_unlock(&watchdog_lock, key);
+		return -EINVAL;
+	}
+	watchdog_state.keepalive_owned = false;
+	k_spin_unlock(&watchdog_lock, key);
+
+	/* The state stays RUNNING: the watchdog is still armed and still wants
+	 * feeding. Only the question of who feeds it has changed.
+	 */
+	(void)k_work_cancel_delayable(&watchdog_keepalive);
+	return 0;
 #else
 	return -ENODEV;
 #endif

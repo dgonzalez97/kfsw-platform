@@ -55,6 +55,8 @@ struct kfsw_platform_watchdog_info {
 	uint8_t state;
 	/** True when a watchdog device was bound at initialization. */
 	bool device_bound;
+	/** True while the built-in keep-alive is the one feeding. */
+	bool keepalive_owned;
 };
 
 /**
@@ -113,6 +115,25 @@ int kfsw_platform_watchdog_start(void);
  * @return A negative errno value from the driver on failure.
  */
 int kfsw_platform_watchdog_feed(void);
+
+/**
+ * @brief Hand the feeding over to a caller.
+ *
+ * Stops the built-in keep-alive without starving the watchdog: it stays armed
+ * and stays feedable, and from then on it is fed only when the caller says so.
+ *
+ * This is how health monitoring takes ownership. Stopping the feed outright
+ * would be a decision to reset, which is a different thing from deciding who
+ * makes that decision.
+ *
+ * The caller must feed at least as often as
+ * @ref kfsw_platform_watchdog_feed_interval_ms, or the part resets.
+ *
+ * @retval 0 The keep-alive stopped and feeding is now the caller's.
+ * @retval -ENODEV No watchdog device is bound.
+ * @retval -EINVAL The watchdog is not running.
+ */
+int kfsw_platform_watchdog_release(void);
 
 /**
  * @brief Stop feeding the watchdog so that it expires.
