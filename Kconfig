@@ -47,3 +47,37 @@ config KFSW_WATCHDOG_AUTO_START
 	  enough to guard.
 
 endmenu
+
+config KFSW_LASTWORDS
+	bool "Leave a note before restarting"
+	select CRC
+	help
+	  Keep one small record in memory that start-up does not clear, written
+	  on the way down and read on the way back up. The event ring is RAM and
+	  does not survive a reset, so without this the record an operator most
+	  wants is the one that is lost.
+
+	  It survives any reset while the supply holds. A real power loss clears
+	  RAM and takes it with it.
+
+if KFSW_LASTWORDS
+
+config KFSW_LASTWORDS_SUPPLY_WATCH
+	bool "Watch the supply and leave a note when it dips"
+	default y if SOC_SERIES_STM32L4X
+	help
+	  Arm the voltage detector, which fires while the part is still running
+	  and above the level that resets it. That gap is the only chance to
+	  write anything. Whether the note is readable afterwards depends on how
+	  far the rail fell.
+
+config KFSW_LASTWORDS_PVD_LEVEL
+	hex "Detector threshold"
+	default 0x60
+	depends on KFSW_LASTWORDS_SUPPLY_WATCH && SOC_SERIES_STM32L4X
+	help
+	  Raw LL_PWR_PVDLEVEL_n value. The default is level 3, about 2.5 V,
+	  comfortably above the brown-out reset level and below normal 3.3 V
+	  operation.
+
+endif # KFSW_LASTWORDS
