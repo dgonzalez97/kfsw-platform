@@ -82,6 +82,21 @@ bool kfsw_lastwords_take(struct kfsw_lastwords *value)
 	return valid;
 }
 
+bool kfsw_lastwords_withdraw(enum kfsw_lastwords_reason reason)
+{
+	if ((record.magic != KFSW_LASTWORDS_MAGIC) ||
+	    (record.version != KFSW_LASTWORDS_VERSION) || (record.crc != record_crc(&record)) ||
+	    (record.reason != (uint8_t)reason)) {
+		return false;
+	}
+	/* Only the magic is cleared. Rewriting the rest would be work done
+	 * while something may be about to reset, for no gain: a record without
+	 * its magic is already unreadable.
+	 */
+	record.magic = 0U;
+	return true;
+}
+
 const char *kfsw_lastwords_reason_name(enum kfsw_lastwords_reason reason)
 {
 	switch (reason) {
