@@ -7,15 +7,20 @@ buys something: a lifecycle to own, a decision to make, or a Zephyr detail that
 would otherwise leak into every caller. Where Zephyr's own API is already the
 right one, services call it directly.
 
-Current scope:
-
-- reset cause, latched
-- monotonic elapsed time
-- LittleFS storage lifecycle
-- watchdog
+| Mechanism | What it is |
+| --- | --- |
+| Time | Monotonic elapsed time |
+| Reset cause | Why the board restarted, latched at boot |
+| Storage | The LittleFS lifecycle and its mount |
+| Watchdog | Arm, feed, stop feeding — no policy |
+| Last words | A note that survives a restart, written on the way down |
 
 Everything here sits below the parameter service, which is why the tables that
 publish these values live in the composition rather than here.
+
+Full documentation is on the
+[K-FSW site](https://dgonzalez97.github.io/k-fsw/); what follows is the
+reasoning behind the parts that are easy to get wrong.
 
 ## Reset cause
 
@@ -23,6 +28,24 @@ Reading the cause clears the latched hardware flags, so the first reader is the
 only reader. The boot service reads it once at startup and hands the value out;
 anything that calls the platform again gets an empty register. That is the
 whole reason `kfsw_boot_get_reset_cause()` exists.
+
+## Last words
+
+The event ring is RAM, so what a node was doing in the moment before it went
+away is exactly the record a reset destroys. One small record lives in memory
+that start-up does not clear, written on the way down and read on the way back
+up by the boot service.
+
+```text
+  commanded restart, watchdog, fault, reset button   the note survives
+  a brown-out dip                                    depends how far the rail fell
+  the power lead pulled                              gone, and RAM with it
+```
+
+Surviving a dip is the case this is for. It is validated by magic and CRC with
+the checksum written last, so a reset landing mid-write leaves something that
+reports as *nothing was left* rather than as a wrong answer. Reading consumes
+it, because attributing one restart's reason to the next is worse than silence.
 
 ## Storage
 
