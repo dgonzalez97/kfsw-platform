@@ -79,6 +79,18 @@ void kfsw_lastwords_write(enum kfsw_lastwords_reason reason, uint32_t detail,
  */
 bool kfsw_lastwords_take(struct kfsw_lastwords *record);
 
+/**
+ * @brief Withdraw a note, but only if it is still the one you left.
+ *
+ * A writer that predicts a restart has to be able to take it back when the
+ * restart does not come, or a later reset for an unrelated cause would be
+ * blamed on it. Matching the reason first is what keeps one writer from
+ * discarding another's account.
+ *
+ * Returns true when a note was withdrawn.
+ */
+bool kfsw_lastwords_withdraw(enum kfsw_lastwords_reason reason);
+
 /** Human-readable name for a reason, for the shell and the log. */
 const char *kfsw_lastwords_reason_name(enum kfsw_lastwords_reason reason);
 
