@@ -42,6 +42,10 @@ up by the boot service.
   the power lead pulled                              gone, and RAM with it
 ```
 
+A node restarted on command, saying afterwards why it went down:
+
+![A node restarted, and the note it left](https://raw.githubusercontent.com/dgonzalez97/k-fsw/main/docs/media/reboot-with-a-pin.gif)
+
 Surviving a dip is the case this is for. It is validated by magic and CRC with
 the checksum written last, so a reset landing mid-write leaves something that
 reports as *nothing was left* rather than as a wrong answer. Reading consumes
