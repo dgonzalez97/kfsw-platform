@@ -12,19 +12,14 @@ extern "C" {
  * @defgroup kfsw_platform_watchdog K-FSW platform watchdog
  * @ingroup kfsw_platform
  *
- * Hardware watchdog mechanism. The platform owns arming the device, feeding it
- * and stopping the feed on request. It owns no health policy: nothing here
- * decides whether the system is well, only whether the watchdog has been told
- * that it is.
+ * Arm, feed, stop feeding. No policy: nothing here decides whether the system
+ * is well, only whether the watchdog has been told that it is.
  *
- * The keep-alive is a default, not a supervisor. A later health component is
- * expected to take ownership of the decision to feed, at which point it should
- * stop the built-in keep-alive and call @ref kfsw_platform_watchdog_feed
- * itself.
+ * The built-in keep-alive is a default, not a supervisor. The health service
+ * takes the decision over, stops it, and feeds the watchdog itself.
  *
- * The watchdog cannot be disarmed on most parts once started, including the
- * STM32 independent watchdog this was first brought up against. Stopping the
- * feed therefore ends in a reset, by design.
+ * Most parts cannot disarm a started watchdog, the STM32 independent watchdog
+ * included, so stopping the feed ends in a reset by design.
  *
  * @{
  */

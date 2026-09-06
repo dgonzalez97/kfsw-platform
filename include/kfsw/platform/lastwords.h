@@ -12,24 +12,19 @@ extern "C" {
  * @file
  * A note a node leaves for itself before it restarts.
  *
- * The event ring is RAM and does not survive a reset, so the record an
- * operator most wants — what the node was doing in the moment before it went
- * away — is exactly the one that is lost. This keeps one small record in
- * memory the reset does not clear, written on the way down and read on the way
- * back up.
+ * The event ring is RAM, so what a node was doing just before it went away is
+ * exactly the record a reset destroys. This keeps one small record in memory
+ * start-up does not clear, written on the way down and read on the way back up.
  *
- * **What survives what.** The record lives in RAM that is not zeroed at
- * start-up, so it survives any reset while the supply holds: a commanded
- * restart, a watchdog bite, a fault, the reset button. A real power loss
- * clears RAM and takes the record with it. A brown-out sits in between: the
- * voltage detector fires while the supply is still high enough to run, so the
- * note is written, and whether it is still there afterwards depends on how far
- * the rail actually fell. Surviving a dip is the case this is for; surviving a
- * disconnected power lead is not, and would need backup-domain registers or
- * flash.
+ * It survives any reset while the supply holds — commanded, watchdog, fault,
+ * reset button. A real power loss takes it with the rest of RAM. A brown-out
+ * sits in between: the note is written while the rail is still high enough to
+ * run, and whether it is there afterwards depends how far the rail fell. That
+ * dip is the case this is for; a pulled power lead would need backup-domain
+ * registers.
  *
- * The record is validated by magic and CRC, so uninitialised memory is
- * reported as "nothing was left" rather than decoded as a record.
+ * Magic and CRC validate it, so uninitialised memory reads as "nothing was
+ * left" rather than as a record.
  */
 
 /** Why the node was going down. */
