@@ -6,10 +6,6 @@
 
 #include <kfsw/platform/lastwords.h>
 
-/* Not in .bss, so nothing zeroes it during start-up. That is the whole
- * mechanism: the C runtime clears .bss before main, and a record cleared on
- * the way up cannot describe the way down.
- */
 #define KFSW_LASTWORDS_MAGIC 0x4B464C57UL /* "KFLW" */
 #define KFSW_LASTWORDS_VERSION 1U
 
@@ -24,6 +20,10 @@ struct lastwords_record {
 	uint32_t crc;
 };
 
+/* Not in .bss, so nothing zeroes it during start-up. That is the whole
+ * mechanism: the C runtime clears .bss before main, and a record cleared on
+ * the way up cannot describe the way down.
+ */
 static __noinit struct lastwords_record record;
 
 static uint32_t record_crc(const struct lastwords_record *value)
