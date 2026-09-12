@@ -71,6 +71,12 @@ struct kfsw_platform_watchdog_info {
 uint32_t kfsw_platform_watchdog_feed_interval_ms(uint32_t timeout_ms);
 
 /**
+ * @brief Watchdog timeout selected for this board, available before init.
+ * @return Configured milliseconds, or zero when no device is selected.
+ */
+uint32_t kfsw_platform_watchdog_configured_timeout_ms(void);
+
+/**
  * @brief Bind the watchdog device and install the configured timeout.
  *
  * Does not arm the hardware; call @ref kfsw_platform_watchdog_start for that.
@@ -125,6 +131,8 @@ int kfsw_platform_watchdog_feed(void);
  * @ref kfsw_platform_watchdog_feed_interval_ms, or the part resets.
  *
  * @retval 0 The keep-alive stopped and feeding is now the caller's.
+ * @retval -EWOULDBLOCK Called outside a preemptible thread or from the system
+ *                     workqueue. Ownership is unchanged.
  * @retval -ENODEV No watchdog device is bound.
  * @retval -EINVAL The watchdog is not running.
  */
