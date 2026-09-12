@@ -31,6 +31,8 @@ static uint64_t watchdog_last_feed_ms;
 #if KFSW_WATCHDOG_PRESENT
 static const struct device *const watchdog_device = DEVICE_DT_GET(KFSW_WATCHDOG_NODE);
 static int watchdog_channel = -1;
+K_MUTEX_DEFINE(watchdog_handover_lock);
+static struct k_work_sync watchdog_release_sync;
 
 static void watchdog_keepalive_handler(struct k_work *work);
 K_WORK_DELAYABLE_DEFINE(watchdog_keepalive, watchdog_keepalive_handler);
@@ -45,6 +47,15 @@ uint32_t kfsw_platform_watchdog_feed_interval_ms(uint32_t timeout_ms)
 	 * request for an infinitely fast keep-alive.
 	 */
 	return (interval == 0U) ? 1U : interval;
+}
+
+uint32_t kfsw_platform_watchdog_configured_timeout_ms(void)
+{
+#if KFSW_WATCHDOG_PRESENT
+	return CONFIG_KFSW_WATCHDOG_TIMEOUT_MS;
+#else
+	return 0U;
+#endif
 }
 
 #if KFSW_WATCHDOG_PRESENT
@@ -68,25 +79,17 @@ static int watchdog_feed_locked(void)
 static void watchdog_keepalive_handler(struct k_work *work)
 {
 	k_spinlock_key_t key;
-	bool running;
-	uint32_t interval;
 
 	ARG_UNUSED(work);
 
 	key = k_spin_lock(&watchdog_lock);
-	running = (watchdog_state.state == KFSW_PLATFORM_WATCHDOG_RUNNING);
-	interval = watchdog_state.feed_interval_ms;
-	if (running) {
+	if (watchdog_state.keepalive_owned &&
+	    (watchdog_state.state == KFSW_PLATFORM_WATCHDOG_RUNNING)) {
 		(void)watchdog_feed_locked();
+		(void)k_work_reschedule(&watchdog_keepalive,
+					K_MSEC(watchdog_state.feed_interval_ms));
 	}
 	k_spin_unlock(&watchdog_lock, key);
-
-	/* A starved watchdog must not be rescheduled: that is the whole point
-	 * of stopping the feed.
-	 */
-	if (running) {
-		(void)k_work_reschedule(&watchdog_keepalive, K_MSEC(interval));
-	}
 }
 #endif /* KFSW_WATCHDOG_PRESENT */
 
@@ -172,9 +175,9 @@ int kfsw_platform_watchdog_start(void)
 	watchdog_state.state = KFSW_PLATFORM_WATCHDOG_RUNNING;
 	watchdog_state.keepalive_owned = true;
 	(void)watchdog_feed_locked();
+	(void)k_work_reschedule(&watchdog_keepalive, K_MSEC(interval));
 	k_spin_unlock(&watchdog_lock, key);
 
-	(void)k_work_reschedule(&watchdog_keepalive, K_MSEC(interval));
 	return 0;
 #else
 	return -ENODEV;
@@ -210,18 +213,22 @@ int kfsw_platform_watchdog_release(void)
 #if KFSW_WATCHDOG_PRESENT
 	k_spinlock_key_t key;
 
+	if (!k_is_preempt_thread() || (k_current_get() == k_work_queue_thread_get(&k_sys_work_q))) {
+		return -EWOULDBLOCK;
+	}
+	k_mutex_lock(&watchdog_handover_lock, K_FOREVER);
 	key = k_spin_lock(&watchdog_lock);
 	if (watchdog_state.state != KFSW_PLATFORM_WATCHDOG_RUNNING) {
 		k_spin_unlock(&watchdog_lock, key);
+		k_mutex_unlock(&watchdog_handover_lock);
 		return -EINVAL;
 	}
 	watchdog_state.keepalive_owned = false;
 	k_spin_unlock(&watchdog_lock, key);
 
-	/* The state stays RUNNING: the watchdog is still armed and still wants
-	 * feeding. Only the question of who feeds it has changed.
-	 */
-	(void)k_work_cancel_delayable(&watchdog_keepalive);
+	/* Drain a handler already dispatched before ownership changed. */
+	(void)k_work_cancel_delayable_sync(&watchdog_keepalive, &watchdog_release_sync);
+	k_mutex_unlock(&watchdog_handover_lock);
 	return 0;
 #else
 	return -ENODEV;

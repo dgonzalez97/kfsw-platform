@@ -67,3 +67,8 @@ Mounting starts with `FS_MOUNT_FLAG_NO_FORMAT`. A failed mount is formatted
 only when a raw scan proves the whole partition still holds its erase value. A
 partition that has been written to and will not mount is reported as an error,
 because formatting it would destroy data that might still be recoverable.
+
+## License
+
+Licensed under [Apache 2.0](LICENSE). Third-party dependencies retain their
+own licences.

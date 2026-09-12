@@ -35,6 +35,8 @@ target_link_libraries(kfsw_platform
     PUBLIC
         zephyr_generated_headers
         zephyr_interface
+    PRIVATE
+        kernel
 )
 
 target_link_libraries_ifdef(CONFIG_KFSW_STORAGE kfsw_platform PUBLIC
