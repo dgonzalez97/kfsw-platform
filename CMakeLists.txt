@@ -1,6 +1,7 @@
 add_library(kfsw_platform STATIC
     src/reset.c
     src/time.c
+    src/wallclock.c
 )
 
 target_sources_ifdef(CONFIG_KFSW_STORAGE kfsw_platform PRIVATE
