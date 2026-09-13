@@ -11,6 +11,7 @@ right one, services call it directly.
 | --- | --- |
 | Time | Monotonic elapsed time |
 | Reset cause | Why the board restarted, latched at boot |
+| Hardware identity | The identifier the silicon was manufactured with |
 | Storage | The LittleFS lifecycle and its mount |
 | Watchdog | Arm, feed, stop feeding — no policy |
 | Last words | A note that survives a restart, written on the way down |
@@ -28,6 +29,33 @@ Reading the cause clears the latched hardware flags, so the first reader is the
 only reader. The boot service reads it once at startup and hands the value out;
 anything that calls the platform again gets an empty register. That is the
 whole reason `kfsw_boot_get_reset_cause()` exists.
+
+## Hardware identity
+
+Two boards flashed with the same image are indistinguishable on every field a
+console prints: hostname, model and revision are all build options and read
+identically across a bench. `kfsw_platform_get_hardware_id()` is the one that
+is not, written as lowercase hex so the same unit reads the same on every
+target.
+
+```text
+  STM32L496   203037324d46500c0010001f   96 bits
+  Kinetis K64 ffffffff4e454487500a0013   128 bits
+  RP2040      5044340578af1b1c            64 bits
+```
+
+The width differs by SoC, so a buffer that is too small is refused rather than
+truncated: half an identifier names a different unit, which is worse than
+reporting none at all. An SoC that reports nothing answers `-ENOTSUP`.
+
+Read once at boot and handed out from there, for the same reason the reset
+cause is — the boot marker, the shell and the board table all report it, and a
+fact with two sources eventually disagrees.
+
+A ground node reaching two different boards over one CAN bus, each answering
+with its own silicon identifier:
+
+![Two boards on one bus, each naming its own silicon](https://raw.githubusercontent.com/dgonzalez97/k-fsw/main/docs/media/multi-board-can.gif)
 
 ## Last words
 
