@@ -1,4 +1,5 @@
 add_library(kfsw_platform STATIC
+    src/hardware.c
     src/reset.c
     src/time.c
     src/wallclock.c
