@@ -52,10 +52,10 @@ Read once at boot and handed out from there, for the same reason the reset
 cause is — the boot marker, the shell and the board table all report it, and a
 fact with two sources eventually disagrees.
 
-A ground node reaching two different boards over one CAN bus, each answering
+A ground node reaching three boards over two different links, each answering
 with its own silicon identifier:
 
-![Two boards on one bus, each naming its own silicon](https://raw.githubusercontent.com/dgonzalez97/k-fsw/main/docs/media/multi-board-can.gif)
+![Three boards, each naming its own silicon](https://raw.githubusercontent.com/dgonzalez97/k-fsw/develop/docs/media/multi-board-can.gif)
 
 ## Last words
 
