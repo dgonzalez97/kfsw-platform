@@ -11,10 +11,8 @@
 #include <kfsw/platform/time.h>
 #include <kfsw/platform/watchdog.h>
 
-/* The board's own watchdog0 alias is not used. On the first target brought up
- * it selects the window watchdog, which resets when fed too early and whose
- * timeout is far shorter than a flight keep-alive wants. The device is chosen
- * explicitly instead, the same way the rest of K-FSW binds hardware.
+/* The board's watchdog0 alias is the window watchdog, so the device comes
+ * from the kfsw,watchdog chosen property instead.
  */
 #define KFSW_WATCHDOG_NODE DT_CHOSEN(kfsw_watchdog)
 #define KFSW_WATCHDOG_PRESENT DT_NODE_HAS_STATUS(KFSW_WATCHDOG_NODE, okay)
@@ -42,10 +40,7 @@ uint32_t kfsw_platform_watchdog_feed_interval_ms(uint32_t timeout_ms)
 {
 	uint32_t interval = timeout_ms / KFSW_WATCHDOG_FEED_DIVISOR;
 
-	/* A zero interval would busy-feed and starve everything else, and a
-	 * timeout below the divisor is a misconfiguration rather than a
-	 * request for an infinitely fast keep-alive.
-	 */
+	/* A timeout below the divisor would give a zero feed interval. */
 	return (interval == 0U) ? 1U : interval;
 }
 
@@ -102,11 +97,7 @@ int kfsw_platform_watchdog_init(void)
 				.min = 0U,
 				.max = CONFIG_KFSW_WATCHDOG_TIMEOUT_MS,
 			},
-		/* No callback: the independent watchdog on the first target
-		 * supports one only behind an extra Kconfig, and a reset that
-		 * depends on an interrupt firing is weaker than one that does
-		 * not.
-		 */
+		/* No callback, so the reset doesn't depend on an interrupt. */
 		.callback = NULL,
 		.flags = WDT_FLAG_RESET_SOC,
 	};
@@ -159,10 +150,7 @@ int kfsw_platform_watchdog_start(void)
 	interval = watchdog_state.feed_interval_ms;
 	k_spin_unlock(&watchdog_lock, key);
 
-	/* Pausing while halted by the debugger keeps a breakpoint from looking
-	 * like a hang. Not every driver supports it, and losing the option is
-	 * not a reason to leave the system unguarded.
-	 */
+	/* Pause while halted in the debugger, where the driver supports it. */
 	result = wdt_setup(watchdog_device, WDT_OPT_PAUSE_HALTED_BY_DBG);
 	if (result == -ENOTSUP) {
 		result = wdt_setup(watchdog_device, 0);
@@ -226,7 +214,7 @@ int kfsw_platform_watchdog_release(void)
 	watchdog_state.keepalive_owned = false;
 	k_spin_unlock(&watchdog_lock, key);
 
-	/* Drain a handler already dispatched before ownership changed. */
+	/* Wait for a handler that was already running before the handover. */
 	(void)k_work_cancel_delayable_sync(&watchdog_keepalive, &watchdog_release_sync);
 	k_mutex_unlock(&watchdog_handover_lock);
 	return 0;
@@ -248,9 +236,7 @@ int kfsw_platform_watchdog_stop_feeding(void)
 	watchdog_state.state = KFSW_PLATFORM_WATCHDOG_STARVED;
 	k_spin_unlock(&watchdog_lock, key);
 
-	/* Cancel without waiting: this may be called from a context that must
-	 * not block, and the handler checks the state before feeding anyway.
-	 */
+	/* Don't wait here; the handler checks the state before feeding. */
 	(void)k_work_cancel_delayable(&watchdog_keepalive);
 	return 0;
 #else

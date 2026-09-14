@@ -14,19 +14,7 @@
 
 #include <zephyr/drivers/rtc.h>
 
-/*
- * A wall clock the board keeps for itself.
- *
- * The counter lives in the RTC's backup domain, which a software reset does
- * not touch. That is the whole point: a node that reboots on a watchdog or on
- * command comes back knowing when it is, so scheduled collection resumes and a
- * beacon starts again without a ground station in view to set the time.
- *
- * A power cycle is a different question and belongs to the board rather than
- * to this file: the domain only survives one where VBAT is actually backed,
- * which on a development board usually means fitting the cell the footprint is
- * there for.
- */
+/* Wall clock on the RTC. The counter survives a software reset. */
 static const struct device *const rtc_device = DEVICE_DT_GET(DT_CHOSEN(kfsw_rtc));
 
 bool kfsw_wallclock_is_present(void)
@@ -49,17 +37,11 @@ int kfsw_wallclock_get(int64_t *seconds)
 
 	result = rtc_get_time(rtc_device, &value);
 	if (result != 0) {
-		/* The driver reports a clock that is running but was never set
-		 * as -ENODATA, which is not a fault: it is a node that has
-		 * never been told the time. Passed through unchanged so the
-		 * caller can tell the two apart.
-		 */
+		/* -ENODATA means the RTC runs but was never set. */
 		return result;
 	}
 
-	/* struct rtc_time is layout-compatible with struct tm, which is what
-	 * the conversion takes; the trailing nanoseconds field is ignored.
-	 */
+	/* struct rtc_time is layout-compatible with struct tm. */
 	unix_seconds = timeutil_timegm64((const struct tm *)&value);
 	if (unix_seconds < 0) {
 		return -ERANGE;

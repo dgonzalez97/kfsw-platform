@@ -14,16 +14,9 @@ config KFSW_WATCHDOG
 	bool "K-FSW hardware watchdog"
 	depends on WATCHDOG
 	help
-	  Enable the platform watchdog mechanism: arm the device selected by
-	  the kfsw,watchdog devicetree chosen property, keep it fed, and allow
-	  the feed to be stopped so that the part resets.
-
-	  This is the mechanism only. It carries no health policy and decides
-	  nothing about whether the system is well.
-
-	  On a target with no kfsw,watchdog chosen node the API is still
-	  present and every operation reports -ENODEV, so a composition without
-	  watchdog hardware builds and runs unchanged.
+	  Enable the platform watchdog: arm the device selected by the
+	  kfsw,watchdog chosen property, feed it, and stop feeding on request.
+	  Without a kfsw,watchdog node every call returns -ENODEV.
 
 config KFSW_WATCHDOG_TIMEOUT_MS
 	int "Watchdog timeout in milliseconds"
@@ -31,20 +24,16 @@ config KFSW_WATCHDOG_TIMEOUT_MS
 	default 8000
 	range 100 32000
 	help
-	  Time the hardware allows between feeds before resetting the part.
-	  The keep-alive feeds at a third of this, so two consecutive feeds can
-	  be missed before a reset. The upper bound is what the STM32
-	  independent watchdog can express from its low-speed oscillator.
+	  Watchdog timeout. The keep-alive feeds at a third of this, so two
+	  feeds can be missed before a reset.
 
 config KFSW_WATCHDOG_AUTO_START
 	bool "Arm the watchdog during application start-up"
 	depends on KFSW_WATCHDOG
 	default y
 	help
-	  Arm the hardware once the application has finished bringing services
-	  up. Turn this off to arm it explicitly, which is what a composition
-	  wants when a later boot stage decides whether the image is healthy
-	  enough to guard.
+	  Arm the watchdog once the application has started all services.
+	  Turn this off to arm it later from the application.
 
 endmenu
 
@@ -52,13 +41,9 @@ config KFSW_LASTWORDS
 	bool "Leave a note before restarting"
 	select CRC
 	help
-	  Keep one small record in memory that start-up does not clear, written
-	  on the way down and read on the way back up. The event ring is RAM and
-	  does not survive a reset, so without this the record an operator most
-	  wants is the one that is lost.
-
-	  It survives any reset while the supply holds. A real power loss clears
-	  RAM and takes it with it.
+	  Keep a small record in RAM that start-up does not clear. It is
+	  written before a restart and read by the boot service. It survives a
+	  reset but not a power loss.
 
 if KFSW_LASTWORDS
 
@@ -66,18 +51,15 @@ config KFSW_LASTWORDS_SUPPLY_WATCH
 	bool "Watch the supply and leave a note when it dips"
 	default y if SOC_SERIES_STM32L4X
 	help
-	  Arm the voltage detector, which fires while the part is still running
-	  and above the level that resets it. That gap is the only chance to
-	  write anything. Whether the note is readable afterwards depends on how
-	  far the rail fell.
+	  Arm the supply voltage detector so a note is written when the supply
+	  drops. Whether the note survives depends on how far the voltage falls.
 
 config KFSW_LASTWORDS_PVD_LEVEL
 	hex "Detector threshold"
 	default 0x60
 	depends on KFSW_LASTWORDS_SUPPLY_WATCH && SOC_SERIES_STM32L4X
 	help
-	  Raw LL_PWR_PVDLEVEL_n value. The default is level 3, about 2.5 V,
-	  comfortably above the brown-out reset level and below normal 3.3 V
-	  operation.
+	  Raw LL_PWR_PVDLEVEL_n value. Level 3 is about 2.5 V, above the
+	  brown-out reset level.
 
 endif # KFSW_LASTWORDS

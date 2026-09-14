@@ -18,10 +18,7 @@ int kfsw_platform_get_hardware_id(char *text, size_t size)
 		return -EINVAL;
 	}
 
-	/* A driver that is absent answers -ENOSYS and one that is present but
-	 * has nothing to report answers zero. Neither is a failure worth a
-	 * distinct code here: both mean this SoC cannot name itself.
-	 */
+	/* No driver (-ENOSYS) and an empty ID both mean the SoC has no ID. */
 	length = hwinfo_get_device_id(id, sizeof(id));
 	if (length <= 0) {
 		return -ENOTSUP;
