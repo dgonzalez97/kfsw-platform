@@ -1,42 +1,34 @@
 # K-FSW Platform
 
-The layer that touches Zephyr, so nothing above it has to.
+The layer between Zephyr and the rest of K-FSW. It only wraps Zephyr where
+there is setup to manage or a board detail to hide; otherwise services call
+Zephyr directly.
 
-This is not a replacement HAL. It wraps a mechanism only where the wrapping
-buys something: a lifecycle to own, a decision to make, or a Zephyr detail that
-would otherwise leak into every caller. Where Zephyr's own API is already the
-right one, services call it directly.
-
-| Mechanism | What it is |
+| Part | Contents |
 | --- | --- |
-| Time | Monotonic elapsed time |
-| Reset cause | Why the board restarted, latched at boot |
-| Hardware identity | The identifier the silicon was manufactured with |
-| Storage | The LittleFS lifecycle and its mount |
-| Watchdog | Arm, feed, stop feeding — no policy |
-| Last words | A note that survives a restart, written on the way down |
+| Time | Monotonic time |
+| Reset cause | Why the board restarted, read at boot |
+| Hardware ID | The chip's unique ID |
+| Storage | LittleFS setup and mount |
+| Watchdog | Arm, feed and stop feeding |
+| Last words | A note that survives a restart |
+| Wall clock | RTC time that survives a reset |
 
-Everything here sits below the parameter service, which is why the tables that
-publish these values live in the composition rather than here.
+The parameter tables for these values are in the application, because this
+layer sits below the parameter service.
 
-Full documentation is on the
-[K-FSW site](https://dgonzalez97.github.io/k-fsw/); what follows is the
-reasoning behind the parts that are easy to get wrong.
+Full documentation is on the [K-FSW site](https://dgonzalez97.github.io/k-fsw/).
 
 ## Reset cause
 
-Reading the cause clears the latched hardware flags, so the first reader is the
-only reader. The boot service reads it once at startup and hands the value out;
-anything that calls the platform again gets an empty register. That is the
-whole reason `kfsw_boot_get_reset_cause()` exists.
+Reading the reset cause clears the hardware flags, so only the first read sees
+it. The boot service reads it once at startup; use `kfsw_boot_get_reset_cause()`
+instead of reading the platform again.
 
-## Hardware identity
+## Hardware ID
 
-Two boards flashed with the same image are indistinguishable on every field a
-console prints: hostname, model and revision are all build options and read
-identically across a bench. `kfsw_platform_get_hardware_id()` is the one that
-is not, written as lowercase hex so the same unit reads the same on every
-target.
+`kfsw_platform_get_hardware_id()` returns the chip's unique ID as lowercase hex,
+so boards running the same image can be told apart.
 
 ```text
   STM32L496   203037324d46500c0010001f   96 bits
@@ -44,57 +36,48 @@ target.
   RP2040      5044340578af1b1c            64 bits
 ```
 
-The width differs by SoC, so a buffer that is too small is refused rather than
-truncated: half an identifier names a different unit, which is worse than
-reporting none at all. An SoC that reports nothing answers `-ENOTSUP`.
+The width depends on the SoC. A buffer that is too small returns `-ENOSPC`
+instead of a truncated ID, and an SoC without an ID returns `-ENOTSUP`. The
+boot service reads it once, and the boot marker, shell and board table use that
+value.
 
-Read once at boot and handed out from there, for the same reason the reset
-cause is — the boot marker, the shell and the board table all report it, and a
-fact with two sources eventually disagrees.
+A ground node reaching three boards over two links, each reporting its ID:
 
-A ground node reaching three boards over two different links, each answering
-with its own silicon identifier:
-
-![Three boards, each naming its own silicon](https://raw.githubusercontent.com/dgonzalez97/k-fsw/develop/docs/media/multi-board-can.gif)
+![Three boards reporting their IDs](https://raw.githubusercontent.com/dgonzalez97/k-fsw/develop/docs/media/multi-board-can.gif)
 
 ## Last words
 
-The event ring is RAM, so what a node was doing in the moment before it went
-away is exactly the record a reset destroys. One small record lives in memory
-that start-up does not clear, written on the way down and read on the way back
-up by the boot service.
+A small record in RAM that start-up does not clear. It is written before a
+restart and read by the boot service on the next boot, so the node can report
+why it went down.
 
 ```text
   commanded restart, watchdog, fault, reset button   the note survives
-  a brown-out dip                                    depends how far the rail fell
-  the power lead pulled                              gone, and RAM with it
+  brown-out                                          depends on how far the voltage fell
+  power removed                                      lost
 ```
 
-A node restarted on command, saying afterwards why it went down:
+A node restarted on command, reporting why afterwards:
 
 ![A node restarted, and the note it left](https://raw.githubusercontent.com/dgonzalez97/k-fsw/main/docs/media/reboot-with-a-pin.gif)
 
-Surviving a dip is the case this is for. It is validated by magic and CRC with
-the checksum written last, so a reset landing mid-write leaves something that
-reports as *nothing was left* rather than as a wrong answer. Reading consumes
-it, because attributing one restart's reason to the next is worse than silence.
+The note has a magic number and a CRC that is written last, so a reset during
+the write reads as no note. Reading the note clears it.
 
 ## Storage
 
-`kfsw_storage_init()`, `kfsw_storage_mount()` and `kfsw_storage_unmount()` own
-backend validation and the `/kfsw` mount. `kfsw_storage_get_info()` reports
-readiness and real capacity. The application picks the flash partition through
-the `kfsw,storage-partition` devicetree chosen property.
+`kfsw_storage_init()`, `kfsw_storage_mount()` and `kfsw_storage_unmount()`
+check the backend and mount `/kfsw`. `kfsw_storage_get_info()` reports whether
+it is mounted and its capacity. The application chooses the flash partition
+with the `kfsw,storage-partition` devicetree property.
 
-Deliberately absent are one-for-one wrappers around `fs_open()`, `fs_read()`,
-`fs_write()`, `fs_seek()` and `fs_close()`. Once the lifecycle reports ready,
-services use Zephyr's filesystem API as it is. Ownership of the backend stays
-here; the semantics stay Zephyr's.
+There are no wrappers for `fs_open()`, `fs_read()`, `fs_write()`, `fs_seek()`
+or `fs_close()`. Once storage is mounted, services use the Zephyr filesystem
+API directly.
 
-Mounting starts with `FS_MOUNT_FLAG_NO_FORMAT`. A failed mount is formatted
-only when a raw scan proves the whole partition still holds its erase value. A
-partition that has been written to and will not mount is reported as an error,
-because formatting it would destroy data that might still be recoverable.
+Mounting uses `FS_MOUNT_FLAG_NO_FORMAT`. A partition that fails to mount is only
+formatted when every byte is still erased; otherwise the error is returned and
+the data is left alone.
 
 ## License
 
