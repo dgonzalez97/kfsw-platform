@@ -20,17 +20,12 @@ struct lastwords_record {
 	uint32_t crc;
 };
 
-/* Not in .bss, so nothing zeroes it during start-up. That is the whole
- * mechanism: the C runtime clears .bss before main, and a record cleared on
- * the way up cannot describe the way down.
- */
+/* Not in .bss, so start-up doesn't clear it. */
 static __noinit struct lastwords_record record;
 
 static uint32_t record_crc(const struct lastwords_record *value)
 {
-	/* Over everything but the checksum itself, so a half-written record
-	 * fails rather than validating against its own stale sum.
-	 */
+	/* CRC over everything except the CRC field. */
 	return crc32_ieee((const uint8_t *)value, offsetof(struct lastwords_record, crc));
 }
 
@@ -45,10 +40,7 @@ void kfsw_lastwords_write(enum kfsw_lastwords_reason reason, uint32_t detail, ui
 	record.uptime_ms = uptime_ms;
 	record.boot_count = boot_count;
 
-	/* Written last on purpose. A reset landing anywhere before this leaves
-	 * a record that does not validate, which is reported as nothing rather
-	 * than as a wrong answer.
-	 */
+	/* Written last, so an interrupted write doesn't validate. */
 	record.crc = record_crc(&record);
 }
 
@@ -73,10 +65,7 @@ bool kfsw_lastwords_take(struct kfsw_lastwords *value)
 		value->boot_count = record.boot_count;
 	}
 
-	/* Cleared whether or not it validated. A record that survived one
-	 * restart must not be attributed to the next, and leaving invalid
-	 * bytes in place would keep re-reading the same garbage.
-	 */
+	/* Cleared even when invalid, so it is only reported once. */
 	record.magic = 0U;
 	record.crc = 0U;
 	return valid;
@@ -89,10 +78,7 @@ bool kfsw_lastwords_withdraw(enum kfsw_lastwords_reason reason)
 	    (record.reason != (uint8_t)reason)) {
 		return false;
 	}
-	/* Only the magic is cleared. Rewriting the rest would be work done
-	 * while something may be about to reset, for no gain: a record without
-	 * its magic is already unreadable.
-	 */
+	/* Clearing the magic is enough to invalidate the note. */
 	record.magic = 0U;
 	return true;
 }

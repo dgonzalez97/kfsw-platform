@@ -9,21 +9,10 @@ extern "C" {
 #endif
 
 /**
- * @brief Wall time that outlives a reset, when the board can keep it.
+ * @brief Wall time from the RTC named by the `kfsw,rtc` chosen node.
  *
- * Distinct from the monotonic clock in time.h, which measures elapsed time and
- * restarts at every boot. This is the time a sample is stamped with, and the
- * reason it is worth reading from hardware rather than from RAM: a node that
- * resets mid-pass otherwise comes back not knowing when it is, and everything
- * gated on a valid clock — scheduled collection, beacons — stays silent until
- * a ground station is there to tell it.
- *
- * Backed by the RTC named by the `kfsw,rtc` chosen node. A composition without
- * one answers -ENOTSUP and the caller keeps whatever it used before.
- *
- * How much of a reset it survives is the board's business, not this API's: the
- * counter lives in a backup domain that a software reset leaves alone, and
- * that a power cycle only preserves where VBAT is actually backed.
+ * Unlike the monotonic clock in time.h, it survives a software reset, and a
+ * power cycle when VBAT is backed. Without an RTC the calls return -ENOTSUP.
  */
 
 /** Whether this composition has a wall clock at all. */

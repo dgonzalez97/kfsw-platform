@@ -33,10 +33,7 @@ bool kfsw_platform_reset_cause_is_watchdog(uint32_t cause)
 
 const char *kfsw_platform_reset_cause_name(uint32_t cause)
 {
-    /* Ordered by what an operator needs to know first after an unattended
-     * restart, not by bit position. A watchdog reset alongside a brownout is
-     * still a watchdog reset as far as the next boot report is concerned.
-     */
+    /* Priority order for the reported name, watchdog first. */
     if ((cause & RESET_WATCHDOG) != 0U) {
         return "watchdog";
     }
