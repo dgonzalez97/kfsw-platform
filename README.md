@@ -11,8 +11,8 @@ Zephyr directly.
 | Hardware ID | The chip's unique ID |
 | Storage | LittleFS setup and mount |
 | Watchdog | Arm, feed and stop feeding |
-| Last words | A note that survives a restart |
-| Wall clock | RTC time that survives a reset |
+| Last words | A reset note in retained RAM |
+| Wall clock | Time from the selected RTC |
 
 The parameter tables for these values are in the application, because this
 layer sits below the parameter service.
@@ -21,9 +21,10 @@ Full documentation is on the [K-FSW site](https://dgonzalez97.github.io/k-fsw/).
 
 ## Reset cause
 
-Reading the reset cause clears the hardware flags, so only the first read sees
-it. The boot service reads it once at startup; use `kfsw_boot_get_reset_cause()`
-instead of reading the platform again.
+`kfsw_platform_get_reset_cause()` reads the hardware flags and asks the driver
+to clear them. The boot service caches the result; use
+`kfsw_boot_get_reset_cause()` for later reads. Clearing support depends on the
+driver.
 
 ## Hardware ID
 
@@ -47,9 +48,9 @@ A ground node reaching three boards over two links, each reporting its ID:
 
 ## Last words
 
-A small record in RAM that start-up does not clear. It is written before a
-restart and read by the boot service on the next boot, so the node can report
-why it went down.
+A reset note in RAM that startup does not clear. The boot service reads it
+once on the next boot. A reset can retain an existing note; it does not create
+one by itself.
 
 ```text
   commanded restart, watchdog, fault, reset button   the note survives
@@ -61,8 +62,18 @@ A node restarted on command, reporting why afterwards:
 
 ![A node restarted, and the note it left](https://raw.githubusercontent.com/dgonzalez97/k-fsw/main/docs/media/reboot-with-a-pin.gif)
 
-The note has a magic number and a CRC that is written last, so a reset during
-the write reads as no note. Reading the note clears it.
+Reads check the magic, version and CRC, then clear the note. A missing note
+can mean power loss, an interrupted write, or a reset before any note was
+written. Check the hardware reset cause too.
+
+## Wall clock
+
+`kfsw_wallclock_get()` and `kfsw_wallclock_set()` use the RTC selected by
+`kfsw,rtc`. Without one they return `-ENOTSUP`. Retention across reset or power
+loss depends on the RTC, board configuration and backup supply.
+
+Use monotonic time for intervals and deadlines. Setting the RTC does not
+change those timers.
 
 ## Storage
 
