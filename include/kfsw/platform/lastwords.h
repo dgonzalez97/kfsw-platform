@@ -15,9 +15,9 @@ extern "C" {
  * validate it.
  */
 
-/** Why the node was going down. */
+/** Reset reason. */
 enum kfsw_lastwords_reason {
-	/** Nothing was written, or what was there did not validate. */
+	/** No valid reset note. */
 	KFSW_LASTWORDS_NONE = 0,
 	/** An operator or the ground asked for a restart. */
 	KFSW_LASTWORDS_COMMANDED = 1,
@@ -31,15 +31,15 @@ enum kfsw_lastwords_reason {
 	KFSW_LASTWORDS_UNKNOWN = 5,
 };
 
-/** What the previous run left behind. */
+/** Retained reset note. */
 struct kfsw_lastwords {
-	/** Why it was going down. */
+	/** Reset reason. */
 	enum kfsw_lastwords_reason reason;
 	/** Caller-defined, meaningful only alongside the reason. */
 	uint32_t detail;
-	/** Milliseconds the previous run had been up when it wrote this. */
+	/** Uptime in milliseconds when the note was written. */
 	uint32_t uptime_ms;
-	/** How many restarts had happened before it, as the writer knew it. */
+	/** Boot count supplied by the writer. */
 	uint32_t boot_count;
 };
 

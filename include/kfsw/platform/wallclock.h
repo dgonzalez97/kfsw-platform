@@ -11,11 +11,11 @@ extern "C" {
 /**
  * @brief Wall time from the RTC named by the `kfsw,rtc` chosen node.
  *
- * Unlike the monotonic clock in time.h, it survives a software reset, and a
- * power cycle when VBAT is backed. Without an RTC the calls return -ENOTSUP.
+ * Retention depends on the RTC, board configuration and backup supply.
+ * Without an RTC the calls return -ENOTSUP.
  */
 
-/** Whether this composition has a wall clock at all. */
+/** Whether an RTC is configured. */
 bool kfsw_wallclock_is_present(void);
 
 /**
