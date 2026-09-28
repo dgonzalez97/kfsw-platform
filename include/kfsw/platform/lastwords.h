@@ -44,18 +44,22 @@ struct kfsw_lastwords {
 };
 
 /**
- * @brief Write a note. Safe from an interrupt; a second call replaces the first.
+ * @brief Write a note without waiting, including from an interrupt.
+ * A concurrent or nested operation is ignored while another owns the record.
+ * Sequential writes replace the previous note; there is no severity arbitration.
  */
-void kfsw_lastwords_write(enum kfsw_lastwords_reason reason, uint32_t detail,
-			  uint32_t uptime_ms, uint32_t boot_count);
+void kfsw_lastwords_write(enum kfsw_lastwords_reason reason, uint32_t detail, uint32_t uptime_ms,
+			  uint32_t boot_count);
 
 /**
  * @brief Read the note and clear it. Returns true when a valid note was found.
+ * Returns false without clearing the note if another operation owns it.
  */
 bool kfsw_lastwords_take(struct kfsw_lastwords *record);
 
 /**
  * @brief Clear the note if its reason matches. Returns true when it was cleared.
+ * Returns false if another operation owns the record.
  */
 bool kfsw_lastwords_withdraw(enum kfsw_lastwords_reason reason);
 

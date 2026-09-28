@@ -66,6 +66,10 @@ Reads check the magic, version and CRC, then clear the note. A missing note
 can mean power loss, an interrupted write, or a reset before any note was
 written. Check the hardware reset cause too.
 
+Writes never wait for another writer. A nested operation is ignored until the
+current one finishes; sequential writes replace the note. Fault severity does
+not decide which note is retained.
+
 ## Wall clock
 
 `kfsw_wallclock_get()` and `kfsw_wallclock_set()` use the RTC selected by
