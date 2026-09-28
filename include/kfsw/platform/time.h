@@ -10,8 +10,7 @@ extern "C" {
 /**
  * @brief Get monotonic elapsed time in milliseconds.
  *
- * This local elapsed time is suitable for scheduling and timeouts. It is not
- * synchronized spacecraft time, UTC, TAI, or GNSS time.
+ * Use for scheduling and timeouts. This clock is not synchronized to UTC.
  *
  * @return Milliseconds elapsed since the platform monotonic clock started.
  */
@@ -20,8 +19,7 @@ uint64_t kfsw_time_monotonic_ms(void);
 /**
  * @brief Get monotonic elapsed time in microseconds.
  *
- * This local elapsed time is suitable for scheduling and measurements. It is
- * not synchronized spacecraft time, UTC, TAI, or GNSS time.
+ * Use for intervals and measurements. This clock is not synchronized to UTC.
  *
  * @return Microseconds elapsed since the platform monotonic clock started.
  */
