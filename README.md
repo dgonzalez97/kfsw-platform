@@ -1,8 +1,7 @@
 # K-FSW Platform
 
-The layer between Zephyr and the rest of K-FSW. It only wraps Zephyr where
-there is setup to manage or a board detail to hide; otherwise services call
-Zephyr directly.
+Zephyr setup and board support for K-FSW. Services call Zephyr directly where
+no platform setup is needed.
 
 | Part | Contents |
 | --- | --- |
@@ -86,9 +85,7 @@ check the backend and mount `/kfsw`. `kfsw_storage_get_info()` reports whether
 it is mounted and its capacity. The application chooses the flash partition
 with the `kfsw,storage-partition` devicetree property.
 
-There are no wrappers for `fs_open()`, `fs_read()`, `fs_write()`, `fs_seek()`
-or `fs_close()`. Once storage is mounted, services use the Zephyr filesystem
-API directly.
+Once storage is mounted, services use the Zephyr filesystem API directly.
 
 Mounting uses `FS_MOUNT_FLAG_NO_FORMAT`. A partition that fails to mount is only
 formatted when every byte is still erased; otherwise the error is returned and
