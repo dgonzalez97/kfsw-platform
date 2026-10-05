@@ -184,24 +184,20 @@ bool kfsw_storage_is_ready(void)
 	return ready;
 }
 
-int kfsw_storage_get_info(struct kfsw_storage_info *info)
+static int fill_info(struct kfsw_storage_info *info, const char *backend, const char *mount_point,
+		     bool ready)
 {
 	struct fs_statvfs statistics;
 	int result = 0;
 
-	if (info == NULL) {
-		return -EINVAL;
-	}
-
-	k_mutex_lock(&kfsw_storage_lock, K_FOREVER);
 	memset(info, 0, sizeof(*info));
 	info->filesystem = "LittleFS";
-	info->backend = kfsw_storage_backend;
-	info->mount_point = KFSW_STORAGE_MOUNT_POINT;
-	info->ready = kfsw_storage_ready;
+	info->backend = backend;
+	info->mount_point = mount_point;
+	info->ready = ready;
 
-	if (kfsw_storage_ready) {
-		result = fs_statvfs(KFSW_STORAGE_MOUNT_POINT, &statistics);
+	if (ready) {
+		result = fs_statvfs(mount_point, &statistics);
 		if (result == 0) {
 			info->total_bytes =
 				(uint64_t)statistics.f_frsize * (uint64_t)statistics.f_blocks;
@@ -209,7 +205,84 @@ int kfsw_storage_get_info(struct kfsw_storage_info *info)
 				(uint64_t)statistics.f_frsize * (uint64_t)statistics.f_bfree;
 		}
 	}
+	return result;
+}
 
+int kfsw_storage_get_info(struct kfsw_storage_info *info)
+{
+	int result;
+
+	if (info == NULL) {
+		return -EINVAL;
+	}
+
+	k_mutex_lock(&kfsw_storage_lock, K_FOREVER);
+	result =
+		fill_info(info, kfsw_storage_backend, KFSW_STORAGE_MOUNT_POINT, kfsw_storage_ready);
 	k_mutex_unlock(&kfsw_storage_lock);
 	return result;
 }
+
+#if CONFIG_KFSW_STORAGE_TMP
+#define KFSW_STORAGE_TMP_DISK_NODE DT_CHOSEN(kfsw_tmp_disk)
+#define KFSW_STORAGE_TMP_DISK_NAME DT_PROP(KFSW_STORAGE_TMP_DISK_NODE, disk_name)
+#define KFSW_STORAGE_TMP_SECTOR_SIZE DT_PROP(KFSW_STORAGE_TMP_DISK_NODE, sector_size)
+
+/* On a disk, littlefs reads, programs and caches whole sectors. */
+FS_LITTLEFS_DECLARE_CUSTOM_CONFIG(kfsw_tmp_littlefs, 4, KFSW_STORAGE_TMP_SECTOR_SIZE,
+				  KFSW_STORAGE_TMP_SECTOR_SIZE, KFSW_STORAGE_TMP_SECTOR_SIZE, 8);
+
+static struct fs_mount_t kfsw_tmp_mount_point = {
+	.type = FS_LITTLEFS,
+	.fs_data = &kfsw_tmp_littlefs,
+	.storage_dev = (void *)KFSW_STORAGE_TMP_DISK_NAME,
+	.mnt_point = KFSW_STORAGE_TMP_MOUNT_POINT,
+	.flags = FS_MOUNT_FLAG_USE_DISK_ACCESS,
+};
+
+static bool kfsw_tmp_ready;
+
+int kfsw_storage_tmp_mount(void)
+{
+	int result = 0;
+
+	k_mutex_lock(&kfsw_storage_lock, K_FOREVER);
+	if (!kfsw_tmp_ready) {
+		/* RAM such as the STM32 SRAM2 keeps its contents across a reset. */
+		result = fs_mkfs(FS_LITTLEFS, (uintptr_t)KFSW_STORAGE_TMP_DISK_NAME,
+				 &kfsw_tmp_littlefs, FS_MOUNT_FLAG_USE_DISK_ACCESS);
+		if (result == 0) {
+			result = fs_mount(&kfsw_tmp_mount_point);
+		}
+		kfsw_tmp_ready = result == 0;
+	}
+	k_mutex_unlock(&kfsw_storage_lock);
+	return result;
+}
+
+int kfsw_storage_get_tmp_info(struct kfsw_storage_info *info)
+{
+	int result;
+
+	if (info == NULL) {
+		return -EINVAL;
+	}
+
+	k_mutex_lock(&kfsw_storage_lock, K_FOREVER);
+	result = fill_info(info, KFSW_STORAGE_TMP_DISK_NAME, KFSW_STORAGE_TMP_MOUNT_POINT,
+			   kfsw_tmp_ready);
+	k_mutex_unlock(&kfsw_storage_lock);
+	return result;
+}
+#else
+int kfsw_storage_tmp_mount(void)
+{
+	return -ENOTSUP;
+}
+
+int kfsw_storage_get_tmp_info(struct kfsw_storage_info *info)
+{
+	ARG_UNUSED(info);
+	return -ENOTSUP;
+}
+#endif

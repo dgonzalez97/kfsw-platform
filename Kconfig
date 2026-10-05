@@ -10,6 +10,25 @@ config KFSW_STORAGE
 	  partition selected by the kfsw,storage-partition devicetree chosen
 	  property. File operations continue to use Zephyr's filesystem API.
 
+DT_CHOSEN_KFSW_TMP_DISK := kfsw,tmp-disk
+
+config KFSW_STORAGE_TMP
+	bool "RAM scratch volume at /kfsw/tmp"
+	default y
+	depends on KFSW_STORAGE
+	depends on DISK_ACCESS && FS_LITTLEFS_BLK_DEV
+	depends on $(dt_chosen_enabled,$(DT_CHOSEN_KFSW_TMP_DISK))
+	help
+	  LittleFS on the RAM disk selected by the kfsw,tmp-disk chosen
+	  property. It is formatted at every mount, so nothing in it survives a
+	  reset. The composition enables DISK_ACCESS and FS_LITTLEFS_BLK_DEV;
+	  selecting them here would loop through the flash options.
+
+# A file on the RAM volume caches a whole 512-byte sector, more than the
+# default per-file pool holds. Four open files of either volume fit.
+config FS_LITTLEFS_FC_HEAP_SIZE
+	default 2304 if KFSW_STORAGE_TMP
+
 config KFSW_WATCHDOG
 	bool "K-FSW hardware watchdog"
 	depends on WATCHDOG
