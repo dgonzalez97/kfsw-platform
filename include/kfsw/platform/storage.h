@@ -10,6 +10,9 @@ extern "C" {
 
 #define KFSW_STORAGE_MOUNT_POINT "/kfsw"
 
+/** RAM scratch volume, empty after every boot. */
+#define KFSW_STORAGE_TMP_MOUNT_POINT KFSW_STORAGE_MOUNT_POINT "/tmp"
+
 /** @brief Runtime information for the mounted K-FSW storage volume. */
 struct kfsw_storage_info {
 	/** Filesystem implementation name. */
@@ -75,6 +78,25 @@ bool kfsw_storage_is_ready(void);
  * @return A negative errno value if mounted volume statistics cannot be read.
  */
 int kfsw_storage_get_info(struct kfsw_storage_info *info);
+
+/**
+ * @brief Format and mount the RAM scratch volume at KFSW_STORAGE_TMP_MOUNT_POINT.
+ *
+ * It is formatted on every call, so it starts empty after a reset even where
+ * the RAM keeps its contents. Repeated calls while mounted are harmless.
+ *
+ * @retval 0 The volume is mounted and empty.
+ * @retval -ENOTSUP The composition has no RAM volume.
+ * @return A negative errno value on failure.
+ */
+int kfsw_storage_tmp_mount(void);
+
+/**
+ * @brief Read the RAM scratch volume's information, as kfsw_storage_get_info().
+ *
+ * @retval -ENOTSUP The composition has no RAM volume.
+ */
+int kfsw_storage_get_tmp_info(struct kfsw_storage_info *info);
 
 #ifdef __cplusplus
 }
