@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 /**
- * @defgroup kfsw_platform_watchdog K-FSW platform watchdog
+ * @defgroup kfsw_platform_watchdog Watchdog
  * @ingroup kfsw_platform
  *
  * Arm, feed and stop feeding a hardware watchdog. The health service can take

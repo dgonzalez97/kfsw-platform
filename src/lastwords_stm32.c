@@ -36,6 +36,7 @@ int kfsw_lastwords_watch_supply(void)
 	LL_PWR_SetPVDLevel(CONFIG_KFSW_LASTWORDS_PVD_LEVEL);
 	LL_PWR_EnablePVD();
 
+	/* codechecker_false_positive [misc-redundant-expression] inside Zephyr's macro */
 	IRQ_CONNECT(PVD_PVM_IRQn, 0, pvd_isr, NULL, 0);
 	irq_enable(PVD_PVM_IRQn);
 	return 0;
