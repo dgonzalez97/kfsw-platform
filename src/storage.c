@@ -20,14 +20,26 @@
 BUILD_ASSERT(DT_NODE_EXISTS(KFSW_STORAGE_PARTITION_NODE),
 	     "kfsw,storage-partition must select a fixed partition");
 
+#if CONFIG_KFSW_STORAGE_ZMS_DISK
+#include <zephyr/storage/disk_access.h>
+
+#include "storage_zms_disk.h"
+FS_LITTLEFS_DECLARE_CUSTOM_CONFIG(kfsw_storage_littlefs, 4, KFSW_STORAGE_ZMS_SECTOR_SIZE,
+				  KFSW_STORAGE_ZMS_SECTOR_SIZE, KFSW_STORAGE_ZMS_SECTOR_SIZE, 8);
+#define STORAGE_DEVICE ((void *)KFSW_STORAGE_ZMS_DISK_NAME)
+#define STORAGE_FLAGS (FS_MOUNT_FLAG_NO_FORMAT | FS_MOUNT_FLAG_USE_DISK_ACCESS)
+#else
 FS_LITTLEFS_DECLARE_DEFAULT_CONFIG(kfsw_storage_littlefs);
+#define STORAGE_DEVICE ((void *)KFSW_STORAGE_PARTITION_ID)
+#define STORAGE_FLAGS FS_MOUNT_FLAG_NO_FORMAT
+#endif
 
 static struct fs_mount_t kfsw_storage_mount_point = {
 	.type = FS_LITTLEFS,
 	.fs_data = &kfsw_storage_littlefs,
-	.storage_dev = (void *)KFSW_STORAGE_PARTITION_ID,
+	.storage_dev = STORAGE_DEVICE,
 	.mnt_point = KFSW_STORAGE_MOUNT_POINT,
-	.flags = FS_MOUNT_FLAG_NO_FORMAT,
+	.flags = STORAGE_FLAGS,
 };
 
 K_MUTEX_DEFINE(kfsw_storage_lock);
@@ -65,6 +77,9 @@ static int storage_init_locked(void)
 
 static int storage_partition_is_erased(bool *is_erased)
 {
+#if CONFIG_KFSW_STORAGE_ZMS_DISK
+	return kfsw_storage_zms_is_erased(is_erased);
+#else
 	const struct flash_area *area;
 	uint8_t data[KFSW_STORAGE_ERASE_SCAN_CHUNK_SIZE];
 	size_t offset = 0U;
@@ -99,6 +114,7 @@ static int storage_partition_is_erased(bool *is_erased)
 	*is_erased = true;
 	flash_area_close(area);
 	return 0;
+#endif
 }
 
 int kfsw_storage_init(void)
@@ -128,7 +144,7 @@ int kfsw_storage_mount(void)
 		goto out;
 	}
 
-	kfsw_storage_mount_point.flags = FS_MOUNT_FLAG_NO_FORMAT;
+	kfsw_storage_mount_point.flags = STORAGE_FLAGS;
 	result = fs_mount(&kfsw_storage_mount_point);
 	if (result == 0) {
 		kfsw_storage_ready = true;
@@ -147,14 +163,21 @@ int kfsw_storage_mount(void)
 		goto out;
 	}
 
-	kfsw_storage_mount_point.flags = 0U;
+	kfsw_storage_mount_point.flags = STORAGE_FLAGS & ~FS_MOUNT_FLAG_NO_FORMAT;
 	result = fs_mount(&kfsw_storage_mount_point);
-	kfsw_storage_mount_point.flags = FS_MOUNT_FLAG_NO_FORMAT;
+	kfsw_storage_mount_point.flags = STORAGE_FLAGS;
 	if (result == 0) {
 		kfsw_storage_ready = true;
 	}
 
 out:
+#if CONFIG_KFSW_STORAGE_ZMS_DISK
+	if (result != 0) {
+		bool force = true;
+
+		disk_access_ioctl(KFSW_STORAGE_ZMS_DISK_NAME, DISK_IOCTL_CTRL_DEINIT, &force);
+	}
+#endif
 	k_mutex_unlock(&kfsw_storage_lock);
 	return result;
 }
@@ -168,6 +191,12 @@ int kfsw_storage_unmount(void)
 		result = fs_unmount(&kfsw_storage_mount_point);
 		if (result == 0) {
 			kfsw_storage_ready = false;
+#if CONFIG_KFSW_STORAGE_ZMS_DISK
+			bool force = true;
+
+			result = disk_access_ioctl(KFSW_STORAGE_ZMS_DISK_NAME,
+						   DISK_IOCTL_CTRL_DEINIT, &force);
+#endif
 		}
 	}
 	k_mutex_unlock(&kfsw_storage_lock);

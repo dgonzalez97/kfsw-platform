@@ -22,6 +22,26 @@ config KFSW_STORAGE
 	  partition selected by the kfsw,storage-partition devicetree chosen
 	  property. File operations continue to use Zephyr's filesystem API.
 
+config KFSW_STORAGE_ZMS_DISK
+	bool "ZMS block translation for persistent storage"
+	default n
+	depends on KFSW_STORAGE && DISK_ACCESS && FS_LITTLEFS_BLK_DEV
+	depends on ZMS && !ZMS_ID_64BIT
+	select ZMS_DATA_CRC
+	help
+	  Opt-in 4096-byte logical sectors over exactly two physical erase
+	  sectors in kfsw,storage-partition. Unknown nonblank media is refused.
+	  The on-media recognition guard supports pinned ZMS version 1 only.
+
+config KFSW_STORAGE_ZMS_SECTOR_COUNT
+	int "Number of logical 4096-byte sectors"
+	depends on KFSW_STORAGE_ZMS_DISK
+	default 48
+	range 8 48
+	help
+	  Logical capacity before LittleFS overhead. The physical partition
+	  must hold the complete live set in either of its two erase sectors.
+
 DT_CHOSEN_KFSW_TMP_DISK := kfsw,tmp-disk
 
 config KFSW_STORAGE_TMP
@@ -39,6 +59,7 @@ config KFSW_STORAGE_TMP
 # A file on the RAM volume caches a whole 512-byte sector, more than the
 # default per-file pool holds. Four open files of either volume fit.
 config FS_LITTLEFS_FC_HEAP_SIZE
+	default 16640 if KFSW_STORAGE_ZMS_DISK
 	default 2304 if KFSW_STORAGE_TMP
 
 config KFSW_WATCHDOG
