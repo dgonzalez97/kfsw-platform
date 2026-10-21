@@ -1,5 +1,17 @@
 menu "K-FSW platform"
 
+config KFSW_SEMIHOST
+	bool "Guarded debugger semihost sink"
+	default n
+	select SEMIHOST if CPU_CORTEX_M && ARMV7_M_ARMV8_M_MAINLINE && !ARMV8_M_SE
+	help
+	  Optional bounded text sink for debug builds. Cortex-M with accessible
+	  debug registers is supported; other targets return -ENOTSUP.
+	  Skips ISR, masked interrupts and detached debugger contexts.
+	  An attached debugger does not prove a semihost handler is enabled.
+	  Enable the debugger handler before running this image. Never use in
+	  flight: every write halts the core and waits for the host.
+
 config KFSW_STORAGE
 	bool "K-FSW filesystem storage lifecycle"
 	depends on FLASH_MAP
