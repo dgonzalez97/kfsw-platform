@@ -41,3 +41,12 @@ target_link_libraries(kfsw_platform
 target_link_libraries_ifdef(CONFIG_KFSW_STORAGE kfsw_platform PUBLIC
     FS
 )
+
+target_sources_ifdef(CONFIG_KFSW_SEMIHOST kfsw_platform PRIVATE
+    src/semihost.c
+    src/semihost_target.c
+)
+
+target_sources_ifdef(CONFIG_KFSW_STORAGE_ZMS_DISK kfsw_platform PRIVATE
+    src/storage_zms_disk.c
+)
