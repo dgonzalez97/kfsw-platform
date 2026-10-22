@@ -14,15 +14,15 @@
 
 #include "storage_zms_disk.h"
 
-#define PARTITION DT_CHOSEN(kfsw_storage_partition)
+#define ZMS_PARTITION DT_CHOSEN(kfsw_storage_partition)
 #define SECTOR_COUNT CONFIG_KFSW_STORAGE_ZMS_SECTOR_COUNT
-#define PHYSICAL_SECTOR_SIZE (DT_REG_SIZE(PARTITION) / 2U)
+#define PHYSICAL_SECTOR_SIZE (DT_REG_SIZE(ZMS_PARTITION) / 2U)
 #define ZMS_HEADER_SIZE 16U
 #define ZMS_HEADER_METADATA 0x4201U
 
 BUILD_ASSERT(IS_ENABLED(CONFIG_LITTLE_ENDIAN), "Pinned ZMS format uses native byte order");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_ZMS_ID_64BIT), "Recognition supports 32-bit ZMS IDs only");
-BUILD_ASSERT(DT_REG_SIZE(PARTITION) % 2U == 0U);
+BUILD_ASSERT(DT_REG_SIZE(ZMS_PARTITION) % 2U == 0U);
 BUILD_ASSERT(SECTOR_COUNT *(KFSW_STORAGE_ZMS_SECTOR_SIZE + 32U) + 160U < PHYSICAL_SECTOR_SIZE,
 	     "One physical sector must hold the whole logical live set");
 
@@ -88,7 +88,7 @@ static int initialize(struct disk_info *disk)
 		result = 0;
 		goto out;
 	}
-	result = flash_area_open(DT_FIXED_PARTITION_ID(PARTITION), &area);
+	result = flash_area_open(DT_FIXED_PARTITION_ID(ZMS_PARTITION), &area);
 	if (result != 0) {
 		goto out;
 	}
