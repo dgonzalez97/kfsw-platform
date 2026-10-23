@@ -1,5 +1,13 @@
 menu "K-FSW platform"
 
+config KFSW_BOOT_STORE
+	bool "Early boot flash record"
+	depends on FLASH_MAP && FLASH_PAGE_LAYOUT
+	select NVS
+	help
+	  Two erase pages selected by kfsw,boot-budget-partition. Stores the
+	  boot budget before filesystems and application services start.
+
 config KFSW_SEMIHOST
 	bool "Guarded debugger semihost sink"
 	default n
