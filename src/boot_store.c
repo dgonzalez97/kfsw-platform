@@ -39,6 +39,14 @@ int kfsw_boot_store_open(void)
 		store.sector_count = 2U;
 		result = nvs_mount(&store);
 	}
+	/* NVS refuses both sectors closed and a damaged write area for good. An
+	   empty store reads as a full budget, so erasing is the safe way out. */
+	if ((result == -EDEADLK) || (result == -ESPIPE)) {
+		result = flash_area_flatten(area, 0, area->fa_size);
+		if (result == 0) {
+			result = nvs_mount(&store);
+		}
+	}
 	flash_area_close(area);
 	ready = result == 0;
 	return result;
