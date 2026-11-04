@@ -8,53 +8,53 @@
 
 int kfsw_platform_get_reset_cause(uint32_t *cause)
 {
-    int rc;
+	int rc;
 
-    if (cause == NULL) {
-        return -EINVAL;
-    }
+	if (cause == NULL) {
+		return -EINVAL;
+	}
 
-    *cause = 0U;
+	*cause = 0U;
 
-    rc = hwinfo_get_reset_cause(cause);
+	rc = hwinfo_get_reset_cause(cause);
 
-    if (rc == 0) {
-        /* Clear latched flags so the next boot reports a new reset event. */
-        (void)hwinfo_clear_reset_cause();
-    }
+	if (rc == 0) {
+		/* Clear latched flags so the next boot reports a new reset event. */
+		(void)hwinfo_clear_reset_cause();
+	}
 
-    return rc;
+	return rc;
 }
 
 bool kfsw_platform_reset_cause_is_watchdog(uint32_t cause)
 {
-    return (cause & RESET_WATCHDOG) != 0U;
+	return (cause & RESET_WATCHDOG) != 0U;
 }
 
 const char *kfsw_platform_reset_cause_name(uint32_t cause)
 {
-    /* Priority order for the reported name, watchdog first. */
-    if ((cause & RESET_WATCHDOG) != 0U) {
-        return "watchdog";
-    }
-    if ((cause & RESET_BROWNOUT) != 0U) {
-        return "brownout";
-    }
-    if ((cause & RESET_POR) != 0U) {
-        return "power-on";
-    }
-    if ((cause & RESET_SOFTWARE) != 0U) {
-        return "software";
-    }
-    if ((cause & RESET_PIN) != 0U) {
-        return "pin";
-    }
-    if ((cause & RESET_DEBUG) != 0U) {
-        return "debug";
-    }
-    if ((cause & RESET_LOW_POWER_WAKE) != 0U) {
-        return "low-power-wake";
-    }
+	/* Priority order for the reported name, watchdog first. */
+	if ((cause & RESET_WATCHDOG) != 0U) {
+		return "watchdog";
+	}
+	if ((cause & RESET_BROWNOUT) != 0U) {
+		return "brownout";
+	}
+	if ((cause & RESET_POR) != 0U) {
+		return "power-on";
+	}
+	if ((cause & RESET_SOFTWARE) != 0U) {
+		return "software";
+	}
+	if ((cause & RESET_PIN) != 0U) {
+		return "pin";
+	}
+	if ((cause & RESET_DEBUG) != 0U) {
+		return "debug";
+	}
+	if ((cause & RESET_LOW_POWER_WAKE) != 0U) {
+		return "low-power-wake";
+	}
 
-    return "unknown";
+	return "unknown";
 }
