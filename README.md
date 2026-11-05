@@ -11,6 +11,7 @@ no platform setup is needed.
 | Storage | LittleFS setup and mount |
 | Watchdog | Arm, feed and stop feeding |
 | Last words | A reset note in retained RAM |
+| Boot store | A flash record read before the filesystem mounts |
 | Wall clock | Time from the selected RTC |
 
 The parameter tables for these values are in the application, because this
@@ -44,6 +45,34 @@ value.
 A ground node reaching three boards over two links, each reporting its ID:
 
 ![Three boards reporting their IDs](https://raw.githubusercontent.com/dgonzalez97/k-fsw/develop/docs/media/multi-board-can.gif)
+
+## Boot store
+
+`CONFIG_KFSW_BOOT_STORE` keeps one small record in its own two-page flash
+partition, chosen by `kfsw,boot-budget-partition`, as an NVS store rather than a
+file. It is opened, read and written at `POST_KERNEL` level, before `main()`
+mounts a filesystem, so a node whose filesystem is unusable still has it.
+
+```text
+  kfsw_boot_store_open()    mount, or erase and mount again
+  kfsw_boot_store_read()    both budget bytes, atomically
+  kfsw_boot_store_write()   both budget bytes, atomically
+```
+
+The record is eight bytes: a magic, a version, the two values and a CRC32 the
+reader checks. A record that fails the check returns `-EBADMSG` and the caller
+decides; the boot budget service restarts from the compiled maximum rather than
+switching recovery off for the rest of the mission.
+
+NVS refuses a store whose sectors are both closed, or whose write area is
+damaged, and refuses it for good. Those two cases (`-EDEADLK`, `-ESPIPE`) are
+treated as a damaged store: the partition is erased and mounted again, because
+an empty store reads as a full budget and that is the safe way out. The
+partition must be two erase pages, since NVS needs a spare sector to compact
+into.
+
+Opening is idempotent. Once a store is open it stays open, so the erase path is
+reachable only on the first open of a boot.
 
 ## Last words
 
